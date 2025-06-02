@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>閱讀任務</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; line-height: 1.6; }
+    #article { white-space: pre-wrap; max-width: 800px; margin: auto; }
+    #end-message { font-weight: bold; color: red; margin-top: 40px; display: none; }
+  </style>
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+  <h1>閱讀任務</h1>
+  <div id="article">載入中...</div>
+  <div id="end-message">請回到問卷中繼續回答問題。</div>
+
+  <script>
+    // ✅ Firebase 設定（請用你自己的專案設定）
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_AUTH_DOMAIN",
+      projectId: "YOUR_PROJECT_ID",
+      appId: "YOUR_APP_ID"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    // ✅ 文章列表
+    const articles = {
+      "武俠": `{{武俠內容}}`,
+      "歷史": `{{歷史內容}}`,
+      "懸疑": `{{懸疑內容}}`
+    };
+
+    let user = null;
+    let docRef = null;
+    let focusTimestamps = [];
+
+    // ✅ 紀錄 focus/blur 事件
+    function logFocusChange(type) {
+      focusTimestamps.push({ type, time: new Date().toISOString() });
+      if (docRef) docRef.update({ focusEvents: focusTimestamps });
+    }
+
+    window.addEventListener('blur', () => logFocusChange("blur"));
+    window.addEventListener('focus', () => logFocusChange("focus"));
+
+    // ✅ 登入 + 顯示隨機文章
+    auth.signInWithPopup(new firebase.auth.GoogleAuthProvider())
+      .then(result => {
+        user = result.user;
+        const articleKeys = Object.keys(articles);
+        const chosenKey = articleKeys[Math.floor(Math.random() * articleKeys.length)];
+        document.getElementById("article").textContent = articles[chosenKey];
+
+        // ✅ 寫入資料庫
+        const sessionId = Date.now().toString();
+        docRef = db.collection("readingSessions").doc(user.uid + "_" + sessionId);
+        docRef.set({
+          uid: user.uid,
+          email: user.email,
+          displayName: user.displayName,
+          article: chosenKey,
+          startedAt: new Date().toISOString(),
+          focusEvents: []
+        });
+
+        // ✅ 離開頁面時紀錄結束時間
+        window.addEventListener("beforeunload", () => {
+          if (docRef) {
+            docRef.update({ endedAt: new Date().toISOString() });
+          }
+        });
+
+        // ✅ 顯示結束提示
+        setTimeout(() => {
+          document.getElementById("end-message").style.display = "block";
+        }, 3000); // 可調整顯示時間（此處3秒後顯示）
+      })
+      .catch(err => {
+        document.getElementById("article").textContent = "登入失敗：" + err.message;
+      });
+  </script>
+</body>
+</html>
