@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>閱讀任務</title>
   <style>
     body { font-family: sans-serif; padding: 20px; line-height: 1.6; }
@@ -19,14 +19,8 @@
   <div id="end-message">請回到問卷中繼續回答問題。</div>
 
   <script>
-    // ✅ Firebase 設定（請用你自己的專案設定）
-    // Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
-
-// Your web app's Firebase configuration
-const firebaseConfig = {
+    // ✅ 請在這裡貼上你的 Firebase 設定
+  const firebaseConfig = {
   apiKey: "AIzaSyBJGP_5OZMH2LP2XFKQgsQXUCQD0yFP7-g",
   authDomain: "read-this-35ecd.firebaseapp.com",
   projectId: "read-this-35ecd",
@@ -34,25 +28,21 @@ const firebaseConfig = {
   messagingSenderId: "263716584195",
   appId: "1:263716584195:web:70d5d3dca0b696fc030736"
 };
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.firestore();
 
-    // ✅ 文章列表
+    // ✅ 三篇文章內容
     const articles = {
-      "武俠": `{{武俠內容}}`,
-      "歷史": `{{歷史內容}}`,
-      "懸疑": `{{懸疑內容}}`
+      "武俠": `"+ article_js_strings['武俠'] +"`,
+      "歷史": `"+ article_js_strings['歷史'] +"`,
+      "懸疑": `"+ article_js_strings['懸疑'] +"`
     };
 
     let user = null;
     let docRef = null;
     let focusTimestamps = [];
 
-    // ✅ 紀錄 focus/blur 事件
     function logFocusChange(type) {
       focusTimestamps.push({ type, time: new Date().toISOString() });
       if (docRef) docRef.update({ focusEvents: focusTimestamps });
@@ -61,15 +51,13 @@ const app = initializeApp(firebaseConfig);
     window.addEventListener('blur', () => logFocusChange("blur"));
     window.addEventListener('focus', () => logFocusChange("focus"));
 
-    // ✅ 登入 + 顯示隨機文章
     auth.signInWithPopup(new firebase.auth.GoogleAuthProvider())
       .then(result => {
         user = result.user;
-        const articleKeys = Object.keys(articles);
-        const chosenKey = articleKeys[Math.floor(Math.random() * articleKeys.length)];
+        const keys = Object.keys(articles);
+        const chosenKey = keys[Math.floor(Math.random() * keys.length)];
         document.getElementById("article").textContent = articles[chosenKey];
 
-        // ✅ 寫入資料庫
         const sessionId = Date.now().toString();
         docRef = db.collection("readingSessions").doc(user.uid + "_" + sessionId);
         docRef.set({
@@ -81,18 +69,20 @@ const app = initializeApp(firebaseConfig);
           focusEvents: []
         });
 
-        // ✅ 離開頁面時紀錄結束時間
         window.addEventListener("beforeunload", () => {
-          if (docRef) {
-            docRef.update({ endedAt: new Date().toISOString() });
-          }
+          if (docRef) docRef.update({ endedAt: new Date().toISOString() });
         });
 
-        // ✅ 顯示結束提示
         setTimeout(() => {
           document.getElementById("end-message").style.display = "block";
-        }, 3000); // 可調整顯示時間（此處3秒後顯示）
+        }, 3000);
       })
+      .catch(err => {
+        document.getElementById("article").textContent = "登入失敗：" + err.message;
+      });
+  </script>
+</body>
+</html>
       .catch(err => {
         document.getElementById("article").textContent = "登入失敗：" + err.message;
       });
